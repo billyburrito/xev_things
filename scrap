@@ -1,0 +1,66 @@
+https://data.vexvia.dwabtech.com/api/v3/events?since=651408&timeout=0
+https://data.vexvia.dwabtech.com/api/v3/event/$sku
+
+# find events that we dont have match data for yet..
+select events.sku, events.date_start from events LEFT JOIN matches on events.sku = matches.sku where matches.sku is NULL AND program = 'vrc';
+
+# find and retrieve the events
+sqlite3 ../master.db "select events.sku  from events LEFT JOIN matches on events.sku = matches.sku where matches.sku is NULL AND program = 'vrc';" | awk '{print "wget https://data.vexvia.dwabtech.com/api/v3/event/" $1}' | sh
+
+# then strip the sql header off, for pragma 207, that is the first 566 lines so tail -n+567 into a loading sql file
+
+# query conditions within json objects
+sqlite> select count(*) from matches where json_extract(matches.data, '$.info.matchTuple.round') == 'QUAL';
+count(*)
+7311
+sqlite> select count(*) from matches;                                                                
+count(*)
+8753
+
+# querying winner counts per side
+select count(*) from matches where json_extract(matches.data, '$.finalScore.winner') == 0 and json_extract(matches.data, '$.info.state') == 'SCORED';
+select count(*) from matches where json_extract(matches.data, '$.finalScore.winner') == 1 and json_extract(matches.data, '$.info.state') == 'SCORED';
+select count(*) from matches where json_extract(matches.data, '$.finalScore.winner') == 2 and json_extract(matches.data, '$.info.state') == 'SCORED';
+
+sqlite> select count(*) from matches where json_extract(matches.data, '$.info.state') == 'SCORED';
+11743
+sqlite> select count(*) from matches where json_extract(matches.data, '$.finalScore.winner') == 0 and json_extract(matches.data, '$.info.state') == 'SCORED';
+440
+sqlite> select count(*) from matches where json_extract(matches.data, '$.finalScore.winner') == 1 and json_extract(matches.data, '$.info.state') == 'SCORED';
+6029
+sqlite> select count(*) from matches where json_extract(matches.data, '$.finalScore.winner') == 2 and json_extract(matches.data, '$.info.state') == 'SCORED';
+5274
+
+# querying winner with autonomous factored in
+ # red alliance
+sqlite> select count(*) from matches where json_extract(matches.data, '$.finalScore.winner') == 1 and json_extract(matches.data, '$.info.state') == 'SCORED' AND json_extract(matches.data, '$.scoreData.alliances[0].scoreTypes[0].val') == 1;
+3293
+sqlite> select count(*) from matches where json_extract(matches.data, '$.finalScore.winner') == 1 and json_extract(matches.data, '$.info.state') == 'SCORED' AND json_extract(matches.data, '$.scoreData.alliances[0].scoreTypes[0].val') == 0;
+2611
+ # blue alliance
+sqlite> select count(*) from matches where json_extract(matches.data, '$.finalScore.winner') == 2 and json_extract(matches.data, '$.info.state') == 'SCORED' AND json_extract(matches.data, '$.scoreData.alliances[1].scoreTypes[0].val') == 1;
+2740
+sqlite> select count(*) from matches where json_extract(matches.data, '$.finalScore.winner') == 2 and json_extract(matches.data, '$.info.state') == 'SCORED' AND json_extract(matches.data, '$.scoreData.alliances[1].scoreTypes[0].val') == 0;
+2407
+
+# querying of finals match results
+# still seeing winners leaning toward red
+sqlite> select count(*) from matches where json_extract(matches.data, '$.info.state') == 'SCORED' AND json_extract(matches.data, '$.info.matchTuple.round') == 'F';                                                                                                           
+141
+sqlite> select count(*) from matches where json_extract(matches.data, '$.info.state') == 'SCORED' AND json_extract(matches.data, '$.info.matchTuple.round') == 'F' AND json_extract(matches.data, '$.finalScore.winner') == 2;
+54
+sqlite> select count(*) from matches where json_extract(matches.data, '$.info.state') == 'SCORED' AND json_extract(matches.data, '$.info.matchTuple.round') == 'F' AND json_extract(matches.data, '$.finalScore.winner') == 1;                                                
+86
+sqlite> select count(*) from matches where json_extract(matches.data, '$.info.state') == 'SCORED' AND json_extract(matches.data, '$.info.matchTuple.round') == 'F' AND json_extract(matches.data, '$.finalScore.winner') == 0;                                                
+1
+
+# updated match data as of 11/26
+sqlite> select count(*) from matches where json_extract(matches.data, '$.info.state') == 'SCORED' AND json_extract(matches.data, '$.info.matchTuple.round') == 'F';
+214
+sqlite> select count(*) from matches where json_extract(matches.data, '$.info.state') == 'SCORED' AND json_extract(matches.data, '$.info.matchTuple.round') == 'F' AND json_extract(matches.data, '$.finalScore.winner') == 2;
+77
+sqlite> select count(*) from matches where json_extract(matches.data, '$.info.state') == 'SCORED' AND json_extract(matches.data, '$.info.matchTuple.round') == 'F' AND json_extract(matches.data, '$.finalScore.winner') == 1;                                                
+134
+sqlite> select count(*) from matches where json_extract(matches.data, '$.info.state') == 'SCORED' AND json_extract(matches.data, '$.info.matchTuple.round') == 'F' AND json_extract(matches.data, '$.finalScore.winner') == 0;                                                
+3
+
